@@ -1,4 +1,3 @@
-
 <?php
 // ============================================================
 // VentureIQ – Configuration
@@ -8,15 +7,25 @@
 define('APP_NAME', 'VentureIQ');
 define('APP_TAGLINE', 'AI-Powered E-Commerce Startup Planner');
 
-define('APP_ENV', getenv('APP_ENV') ?: 'development');
+if (PHP_SAPI !== 'cli' && ob_get_level() === 0) {
+    ob_start();
+}
 
-// Base path: localhost uses /ventureiq/public; Render uses /
+// When the web server's document root is /public (Docker, Vercel, Render),
+// the app is served from "/"; otherwise assume XAMPP-style /ventureiq/public.
+$__docRoot   = realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: '';
+$__publicDir = realpath(dirname(__DIR__) . '/public') ?: '';
+$__isRootServed = $__docRoot !== '' && $__docRoot === $__publicDir;
+
+define('APP_ENV', getenv('APP_ENV') ?: ($__isRootServed ? 'production' : 'development'));
+
 define(
     'BASE_PATH',
     getenv('BASE_PATH') !== false
         ? rtrim(getenv('BASE_PATH'), '/')
-        : '/ventureiq/public'
+        : ($__isRootServed ? '' : '/ventureiq/public')
 );
+unset($__docRoot, $__publicDir, $__isRootServed);
 
 define(
     'APP_URL',

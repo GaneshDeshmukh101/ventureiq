@@ -1,4 +1,3 @@
-
 <?php
 /**
  * VentureIQ – AI Chatbot API

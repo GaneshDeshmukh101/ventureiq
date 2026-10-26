@@ -1,4 +1,3 @@
-
 FROM php:8.2-apache
 
 # Install PHP extensions required by VentureIQ
