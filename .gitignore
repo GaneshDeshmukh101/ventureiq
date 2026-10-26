@@ -1,0 +1,16 @@
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Private keys and certificates
+*.key
+*.pem
+
+# Allow the public Aiven CA certificate required for Docker deployment
+!certs/ca.pem
+
+# Local development files
+.DS_Store
+Thumbs.db
