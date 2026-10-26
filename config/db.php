@@ -33,11 +33,23 @@ class DB {
             $sslCa = getenv('DB_SSL_CA');
             $sslCaCert = getenv('DB_SSL_CA_CERT');
 
+            $bundledCa = dirname(__DIR__) . '/certs/ca.pem';
+
             if (($sslCa === false || $sslCa === '') && $sslCaCert !== false && $sslCaCert !== '') {
-                $sslCa = sys_get_temp_dir() . '/aiven-ca.pem';
-                if (!is_file($sslCa)) {
-                    file_put_contents($sslCa, str_replace('\n', "\n", $sslCaCert));
+                if (strpos($sslCaCert, 'BEGIN CERTIFICATE') !== false) {
+                    $sslCa = sys_get_temp_dir() . '/aiven-ca.pem';
+                    if (!is_file($sslCa)) {
+                        file_put_contents($sslCa, str_replace('\n', "\n", $sslCaCert));
+                    }
+                } else {
+                    // DB_SSL_CA_CERT may hold a file path (e.g. the Docker path /var/www/html/certs/ca.pem).
+                    $sslCa = $sslCaCert;
                 }
+            }
+
+            // Paths from other environments won't exist here; use the CA bundled with the app.
+            if ($sslCa !== false && $sslCa !== '' && !is_file($sslCa) && is_file($bundledCa)) {
+                $sslCa = $bundledCa;
             }
 
             if ($sslCa !== false && $sslCa !== '') {
