@@ -6,14 +6,48 @@ if (!defined('ROOT_PATH')) require_once dirname(__DIR__) . '/config/config.php';
 require_once ROOT_PATH . '/config/db.php';
 
 // ── Session ───────────────────────────────────────────────────
+// Serverless instances don't share /tmp, so sessions live in MySQL.
+class DbSessionHandler implements SessionHandlerInterface {
+    public function open($path, $name): bool {
+        DB::run('CREATE TABLE IF NOT EXISTS app_sessions (
+            id VARCHAR(128) NOT NULL PRIMARY KEY,
+            data MEDIUMBLOB NOT NULL,
+            updated_at INT UNSIGNED NOT NULL,
+            INDEX (updated_at)
+        ) ENGINE=InnoDB');
+        return true;
+    }
+    public function close(): bool { return true; }
+    public function read($id): string|false {
+        $row = DB::one('SELECT data FROM app_sessions WHERE id = ?', [$id]);
+        return $row ? (string)$row['data'] : '';
+    }
+    public function write($id, $data): bool {
+        DB::run('REPLACE INTO app_sessions (id, data, updated_at) VALUES (?, ?, ?)', [$id, $data, time()]);
+        return true;
+    }
+    public function destroy($id): bool {
+        DB::run('DELETE FROM app_sessions WHERE id = ?', [$id]);
+        return true;
+    }
+    public function gc($max_lifetime): int|false {
+        return DB::run('DELETE FROM app_sessions WHERE updated_at < ?', [time() - $max_lifetime])->rowCount();
+    }
+}
+
 function session_secure_start(): void {
     if (session_status() === PHP_SESSION_NONE) {
+        $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
         session_set_cookie_params([
             'lifetime' => SESSION_LIFETIME,
             'path'     => '/',
+            'secure'   => $https,
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
+        ini_set('session.gc_maxlifetime', (string)max(SESSION_LIFETIME, 1440));
+        session_set_save_handler(new DbSessionHandler(), true);
         session_name('VIQSESS');
         session_start();
     }
