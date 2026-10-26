@@ -28,7 +28,17 @@ class DB {
 
             // Enable TLS for cloud databases such as Aiven.
             // Set DB_SSL_CA to the path of Aiven's CA certificate.
+            // Or set DB_SSL_CA_CERT to the certificate contents (needed on Vercel,
+            // where files can't be uploaded); it is written to /tmp at runtime.
             $sslCa = getenv('DB_SSL_CA');
+            $sslCaCert = getenv('DB_SSL_CA_CERT');
+
+            if (($sslCa === false || $sslCa === '') && $sslCaCert !== false && $sslCaCert !== '') {
+                $sslCa = sys_get_temp_dir() . '/aiven-ca.pem';
+                if (!is_file($sslCa)) {
+                    file_put_contents($sslCa, str_replace('\n', "\n", $sslCaCert));
+                }
+            }
 
             if ($sslCa !== false && $sslCa !== '') {
                 if (!is_file($sslCa)) {
